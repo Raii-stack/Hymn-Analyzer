@@ -23,3 +23,14 @@ poppler/
 # Output files / Data
 *.jpg
 *.png
+!app_icon.png
+
+# Application Data / Caches
+last_session.json
+pdf_index.json
+march_schedules.json
+
+# PyInstaller
+build/
+dist/
+*.spec
