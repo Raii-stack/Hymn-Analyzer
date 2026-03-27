@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hymn Page Scanner</title>
+</head>
+<body class="custom-scrollbar min-h-screen text-[10pt] text-text font-[Segoe_UI]">
+  
+  <div id="app" class="max-w-[700px] min-w-[700px] mx-auto pb-8">
+    <div class="px-5 py-[18px] pb-[6px]">
+      <h1 class="text-gold text-[18pt] font-bold">🎵 Hymn Page Scanner</h1>
+    </div>
+
+    <!-- File Pickers Card -->
+    <div class="card mx-5 my-[6px] p-2 flex flex-col gap-2">
+      <div class="flex items-center gap-2">
+        <label class="w-32 text-subtext text-right">Hymn PDF:</label>
+        <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" />
+        <input type="text" id="pdfFileName" readonly class="flex-1 bg-log-bg border border-secondary text-text px-2 py-1" />
+        <button id="btnBrowsePdf" class="bg-secondary text-text hover:bg-accent border border-secondary px-[10px] py-[3px] font-bold cursor-pointer">Browse</button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="w-32 text-subtext text-right">Lineup (Img):</label>
+        <input type="file" id="lineupFileInput" accept="image/*" class="hidden" />
+        <input type="text" id="lineupFileName" readonly class="flex-1 bg-log-bg border border-secondary text-text px-2 py-1" />
+        <button id="btnBrowseLineup" class="bg-secondary text-text hover:bg-accent border border-secondary px-[10px] py-[3px] font-bold cursor-pointer">Browse</button>
+      </div>
+
+      <div class="flex items-center gap-2 mt-1">
+        <div class="w-32"></div>
+        <button id="btnParse" class="bg-secondary text-text hover:bg-accent border border-solid border-white px-[14px] py-[6px] font-bold cursor-pointer">Load/Parse Lineup</button>
+        <span id="parseStatus" class="text-[8pt] italic text-subtext ml-3"></span>
+      </div>
+    </div>
+
+    <!-- Parsed Schedule Preview -->
+    <div class="card mx-5 my-[6px] p-2">
+      <h2 class="text-subtext mb-2 text-[9pt]">Parsed Schedule:</h2>
+      <div class="overflow-x-auto custom-scrollbar border border-secondary bg-log-bg p-1 min-h-[100px]" id="scheduleContainer">
+        <!-- Table generated via JS -->
+        <table id="scheduleTable" class="w-full text-left text-sm">
+          <thead id="scheduleHead"></thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+      <p class="text-subtext text-[8pt] italic mt-1">Select columns to scan those dates.</p>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="card mx-5 my-[6px] p-4 flex items-center justify-between">
+      <div class="flex flex-col gap-2 w-1/2">
+        <div class="flex items-center gap-2">
+          <label class="text-subtext">Selected Dates:</label>
+          <input type="text" id="selectedDates" readonly class="flex-1 bg-log-bg border border-secondary text-text px-2 py-1" />
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-subtext text-right w-[88px]">Manual:</label>
+          <input type="text" id="manualInput" class="flex-1 bg-app-bg border border-secondary text-text px-2 py-1 focus:outline-none focus:border-accent" placeholder="e.g. 52, CH23, 1A" />
+        </div>
+      </div>
+      
+      <button id="btnScan" class="bg-secondary text-text hover:bg-accent border border-solid border-white px-[30px] py-[10px] text-[12pt] font-bold cursor-pointer transition-colors self-end h-[60px]" disabled>SCAN PAGES</button>
+    </div>
+
+    <!-- Results Block -->
+    <div class="card mx-5 my-[6px] p-4 flex items-center gap-4 bg-app-bg">
+      <div class="w-20 text-center">
+        <div class="text-[24pt] text-gold mb-1">⎙</div>
+        <div id="scanStatus" class="text-subtext text-[9pt] font-bold">READY</div>
+      </div>
+      <div class="flex-1 border-l border-secondary pl-4">
+        <div class="text-[12pt] font-bold text-success mb-2" id="resultText">—</div>
+        <div class="flex gap-2">
+          <button id="btnCopy" class="bg-surface text-subtext hover:text-text border border-secondary px-3 py-1 cursor-pointer" disabled>Copy</button>
+          <button id="btnPrint" class="bg-surface text-subtext hover:text-text border border-secondary px-3 py-1 cursor-pointer" disabled>Print File...</button>
+          <button id="btnSave" class="bg-surface text-subtext hover:text-text border border-secondary px-3 py-1 cursor-pointer" disabled>Save PDF...</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Viewer -->
+    <div class="mx-5 my-[6px]">
+      <div class="bg-log-bg text-[9pt] font-[Consolas] p-2 border border-secondary log-viewer overflow-y-auto h-[220px]" id="logContainer">
+      </div>
+      <div class="flex justify-end mt-1">
+        <button id="btnClearLog" class="text-subtext text-[8pt] hover:text-text cursor-pointer bg-transparent border-none">Clear Log</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

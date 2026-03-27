@@ -2,9 +2,13 @@ import fitz  # PyMuPDF
 import cv2
 import numpy as np
 import pytesseract
+import sys
 
 # Define the path to your Tesseract executable and your PDF
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+if sys.platform == "win32":
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+else:
+    pytesseract.pytesseract.tesseract_cmd = 'tesseract'
 import re
 import time
 import json
