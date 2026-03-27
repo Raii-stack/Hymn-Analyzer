@@ -366,15 +366,24 @@ class HymnScannerApp(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _on_parse_success(self, columns_data):
+    def _on_parse_success(self, parsed_data):
         self.parse_btn.config(state="normal")
+        
+        # Handle new dict format or legacy list format
+        if isinstance(parsed_data, dict) and "dates" in parsed_data:
+            columns_data = parsed_data["dates"]
+            self.schedule_data = parsed_data # Save the full dict so run_scan can normalize it
+        else:
+            columns_data = parsed_data
+            self.schedule_data = columns_data
+
         self.parse_status.config(text=f"✓ Found {len(columns_data)} columns", fg=SUCCESS)
         self.preview_lbl.config(text="Dates extracted! Select rows in the table to scan.", fg=SUCCESS)
         
-        self.schedule_data = {}
-        
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+            
         for date_guess, hymns in columns_data:
-            self.schedule_data[date_guess] = hymns
             preview = ", ".join(hymns)
             # Add to treeview
             self.tree.insert("", "end", iid=date_guess, values=(date_guess, len(hymns), preview))

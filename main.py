@@ -31,7 +31,7 @@ pdf_store: Dict[str, str] = {}
 class ScanRequest(BaseModel):
     pdf_id: str
     user_input: str
-    schedule_data: Dict[str, List[str]]
+    schedule_data: Any
 
 class ExportRequest(BaseModel):
     pdf_id: str
@@ -54,10 +54,10 @@ async def parse_lineup(file: UploadFile = File(...)):
     
     try:
         results = parse_schedule_image(str(temp_img))
-        # results is list[tuple[str, list[str]]]
-        # return as dict for JSON
-        schedule_data = {str(k): [str(v) for v in vals] for k, vals in results}
-        return {"schedule_data": schedule_data}
+        # results is now {"dates": [(date, [hymns])], "offering": "348", "recessional": "289"}
+        # return as is for JSON, but transform the dates array to a dict if easier, 
+        # actually let's keep it as an array to preserve order in the frontend!
+        return {"schedule_data": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

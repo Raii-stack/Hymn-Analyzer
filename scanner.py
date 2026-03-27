@@ -45,7 +45,33 @@ def save_index(index_data, index_file):
 def load_schedules(schedule_file):
     if os.path.exists(schedule_file):
         with open(schedule_file, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            return normalize_schedule_data(data)
+    return {}
+
+def normalize_schedule_data(data):
+    if isinstance(data, dict) and "dates" in data and isinstance(data["dates"], list):
+        schedules = {}
+        offering = data.get("offering")
+        recessional = data.get("recessional")
+        for item in data["dates"]:
+            if len(item) == 2:
+                date_str = str(item[0])
+                hymns = [str(int(h)) for h in item[1] if str(h).isdigit() and 1 <= int(h) <= 600]
+                if offering and str(offering).isdigit(): hymns.append(str(int(offering)))
+                if recessional and str(recessional).isdigit(): hymns.append(str(int(recessional)))
+                schedules[date_str] = hymns
+        return schedules
+    # Fallback for old dictionary format
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, list):
+        # Fallback for array of tuples
+        schedules = {}
+        for item in data:
+            if len(item) == 2:
+                schedules[str(item[0])] = [str(h) for h in item[1]]
+        return schedules
     return {}
 def parse_schedule_image(image_path: str, log_callback=None) -> list[tuple[str, list[str]]]:
     """
@@ -67,16 +93,22 @@ def parse_schedule_image(image_path: str, log_callback=None) -> list[tuple[str, 
         Analyze the image and extract the song schedule lineup.
         Output MUST be strictly valid JSON format.
         Do NOT wrap the output in markdown block like ```json.
-        The JSON structure should be a list of lists.
-        Each inner list represents a column (or date).
-        The first element of the inner list should be the date (a string representing the day number, e.g., "19").
-        The second element should be a list of hymn numbers (strings) scheduled for that date.
+        The JSON structure should be an object with three keys: "dates", "offering", and "recessional".
+        "dates" should be a list of lists, where each inner list represents a column.
+          The first element of the inner list should be the date (a string representing the day number or column header, e.g., "19" or "02 - TH").
+          The second element should be a list of regular hymn numbers (strings) scheduled for that date.
+        "offering" should be the hymn number string for the Hymn for Offering (if present, else null).
+        "recessional" should be the hymn number string for the Recessional Hymn (if present, else null).
         Only include strings containing digits 1-600 in the hymn numbers. Ignore other text.
         Example output:
-        [
-            ["19", ["12", "116", "233"]],
-            ["26", ["301", "44", "225"]]
-        ]
+        {
+            "dates": [
+                ["19", ["12", "116", "233"]],
+                ["26", ["301", "44", "225"]]
+            ],
+            "offering": "348",
+            "recessional": "289"
+        }
         '''
         
         if log_callback: log_callback("Waiting for Gemini Vision response...")
@@ -98,16 +130,28 @@ def parse_schedule_image(image_path: str, log_callback=None) -> list[tuple[str, 
         
         data = json.loads(text)
         
-        # Transform into expected list of tuples
+        dates_list = data.get("dates", [])
+        offering = data.get("offering")
+        recessional = data.get("recessional")
+        
+        if log_callback:
+            if offering: log_callback(f"  Recognized Offering Hymn: {offering}")
+            if recessional: log_callback(f"  Recognized Recessional Hymn: {recessional}")
+        
+        # Transform into expected layout
         columns_data = []
-        for item in data:
+        for item in dates_list:
             if len(item) == 2:
                 date_str = str(item[0])
                 hymns = [str(int(h)) for h in item[1] if str(h).isdigit() and 1 <= int(h) <= 600]
                 columns_data.append((date_str, hymns))
                 if log_callback: log_callback(f"  Recognized Date: {date_str} => {len(hymns)} hymns")
                 
-        return columns_data
+        return {
+            "dates": columns_data,
+            "offering": str(int(offering)) if offering and str(offering).isdigit() and 1 <= int(offering) <= 600 else None,
+            "recessional": str(int(recessional)) if recessional and str(recessional).isdigit() and 1 <= int(recessional) <= 600 else None
+        }
         
     except Exception as e:
         raise RuntimeError(f"Error calling Gemini API: {e}")
@@ -122,7 +166,7 @@ def run_scan(pdf_path, schedule_file, user_input,
                    If provided, schedule_file is ignored.
     Returns a results dict mapping hymn number -> list of PDF page numbers.
     """
-    schedules = schedule_data if schedule_data is not None else load_schedules(schedule_file)
+    schedules = normalize_schedule_data(schedule_data) if schedule_data is not None else load_schedules(schedule_file)
 
     # Split input and check each token against the schedule keys
     tokens = [t.strip() for t in user_input.split(',') if t.strip()]
