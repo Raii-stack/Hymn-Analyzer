@@ -1,9 +1,10 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "HymnDex",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "build": "vite build"
   },
   "dependencies": {

@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { Music2, FileText, ImageIcon, Calendar, Download, Copy, Printer, Loader2, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
+import './style.css';
+import './theme.css';
+import { Music2, FileText, ImageIcon, Calendar, Download, Copy, Printer, Loader2 } from 'lucide-react';
 import { FileDropzone } from './components/FileDropzone';
 import { MultiSelectDropdown } from './components/MultiSelectDropdown';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
-import { Separator } from './components/ui/separator';
+
 import { toast } from 'sonner';
 import { Toaster } from './components/ui/sonner';
 
@@ -35,13 +38,60 @@ interface ScheduleData {
 
 export default function App() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfId, setPdfId] = useState<string>('');
+  const [pdfFilename, setPdfFilename] = useState<string>('');
   const [lineupImage, setLineupImage] = useState<File | null>(null);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [manualInput, setManualInput] = useState<string>('');
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
   const [scanResults, setScanResults] = useState<string>('');
+  const [scanResultsData, setScanResultsData] = useState<any>(null);
+  const [scanResultsOrder, setScanResultsOrder] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const API_BASE_URL = 'http://127.0.0.1:8000';
+
+  useEffect(() => {
+    const saved = localStorage.getItem('hymn_scanner_session');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.pdfId) setPdfId(data.pdfId);
+        if (data.pdfFilename) setPdfFilename(data.pdfFilename);
+        if (data.scheduleData) setScheduleData(data.scheduleData);
+        if (data.selectedDates) setSelectedDates(data.selectedDates);
+        if (data.manualInput) setManualInput(data.manualInput);
+        if (data.scanResults) setScanResults(data.scanResults);
+        if (data.scanResultsData) setScanResultsData(data.scanResultsData);
+        if (data.scanResultsOrder) setScanResultsOrder(data.scanResultsOrder);
+      } catch (e) {
+        console.error('Failed to parse session', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const sessionData = {
+      pdfId,
+      pdfFilename,
+      scheduleData,
+      selectedDates,
+      manualInput,
+      scanResults,
+      scanResultsData,
+      scanResultsOrder
+    };
+    localStorage.setItem('hymn_scanner_session', JSON.stringify(sessionData));
+  }, [pdfId, pdfFilename, scheduleData, selectedDates, manualInput, scanResults, scanResultsData, scanResultsOrder]);
+
+  useEffect(() => {
+    if (pdfFile) {
+      setPdfId('');
+      setPdfFilename(pdfFile.name);
+    }
+  }, [pdfFile]);
 
   const handleLoadLineup = async () => {
     if (!lineupImage) {
@@ -50,35 +100,51 @@ export default function App() {
     }
     
     setIsLoading(true);
-    setScanResults('Parsing lineup image...\n');
+    setScanResults('Uploading and parsing lineup image...\nWait a few seconds for Gemini AI processing...');
     
-    // Simulate parsing
-    setTimeout(() => {
-      const mockSchedule: ScheduleData = {
-        month: 'April 2 - 30, 2026',
-        dates: [
-          { date: '02', day: 'TH', hymns: ['315', '212', '158', '197', '51', '180'] },
-          { date: '05', day: 'S', hymns: ['283', '148', '174', '11', '64', '273'] },
-          { date: '09', day: 'TH', hymns: ['317', '77', '40', '238', '181', '55'] },
-          { date: '12', day: 'S', hymns: ['318', '150', '139', '541', '189', '149'] },
-          { date: '16', day: 'TH', hymns: ['322', '49', '120', '100', '200', '218'] },
-          { date: '19', day: 'S', hymns: ['302', '279', '248', '108', '240', '224'] },
-          { date: '23', day: 'TH', hymns: ['328', '132', '146', '260', '8', '130'] },
-          { date: '26', day: 'S', hymns: ['321', '498', '404', '514', '235', '460'] },
-          { date: '30', day: 'TH', hymns: ['324', '263', '249', '48', '208', '257'] },
-        ],
-        offeringHymn: '348',
-        recessionalHymn: '289'
+    try {
+      const formData = new FormData();
+      formData.append('file', lineupImage);
+      
+      const res = await fetch(`${API_BASE_URL}/api/parse_lineup`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to parse lineup');
+      }
+      
+      const { schedule_data } = await res.json();
+      
+      // Transform backend format
+      const transformedDates = (schedule_data.dates || []).map((dateTuple: any) => ({
+        date: dateTuple[0].split('-')[0].trim(),
+        day: dateTuple[0].includes('-') ? dateTuple[0].split('-')[1].trim() : '',
+        hymns: dateTuple[1].map(String)
+      }));
+      
+      const newSchedule: ScheduleData = {
+        month: 'Loaded Schedule',
+        dates: transformedDates,
+        offeringHymn: schedule_data.offering || '',
+        recessionalHymn: schedule_data.recessional || ''
       };
-      setScheduleData(mockSchedule);
-      setScanResults('✓ Successfully parsed lineup image\nFound schedule data');
+      
+      setScheduleData(newSchedule);
+      setScanResults('✓ Successfully parsed lineup image\nFound schedule data:\n' + JSON.stringify(schedule_data, null, 2));
+    } catch (err: any) {
+      console.error(err);
+      setScanResults(`❌ Parse error: ${err.message}`);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleScanPages = async () => {
-    if (!pdfFile) {
-      setScanResults('❌ Error: No PDF file selected');
+    if (!pdfFile && !pdfId) {
+      setScanResults('❌ Error: No PDF file selected or available from session');
       return;
     }
 
@@ -88,17 +154,91 @@ export default function App() {
     }
 
     setIsScanning(true);
-    setScanResults(`Uploading PDF: ${pdfFile.name}...\n`);
+    let currentPdfId = pdfId;
+    
+    try {
+      if (!currentPdfId && pdfFile) {
+        setScanResults(`Uploading PDF: ${pdfFile.name}...\n`);
+        const formData = new FormData();
+        formData.append('file', pdfFile);
+        
+        const uploadRes = await fetch(`${API_BASE_URL}/api/upload_pdf`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!uploadRes.ok) throw new Error('Failed to upload PDF');
+        
+        const uploadData = await uploadRes.json();
+        currentPdfId = uploadData.file_id;
+        setPdfId(currentPdfId);
+        setScanResults(prev => prev + '✓ PDF uploaded successfully\n');
+      }
 
-    // Simulate scanning
-    setTimeout(() => {
-      setScanResults(prev => prev + '✓ PDF uploaded successfully\n\nScanning pages...\n');
+      setScanResults(prev => prev + 'Scanning pages...\n');
       
-      setTimeout(() => {
-        setScanResults(prev => prev + '✓ Scan complete!\n\nFound hymns:\n• TAG AWIT #52 - "Pagdayeg sa Diyos"\n• TAG AWIT #104 - "Papuri sa Langit"\n• TAG AWIT #156 - "Salamat sa Panginoon"');
-        setIsScanning(false);
-      }, 2000);
-    }, 1000);
+      const backendScheduleData = scheduleData ? {
+        dates: scheduleData.dates.map(d => [d.date, d.hymns]),
+        offering: scheduleData.offeringHymn,
+        recessional: scheduleData.recessionalHymn
+      } : null;
+      
+      const dateTokens = selectedDates.map(sd => sd.split('-')[0].trim());
+      const queryTokens = [...dateTokens];
+      if (manualInput) {
+        queryTokens.push(...manualInput.split(',').map(s => s.trim()).filter(Boolean));
+      }
+      
+      const scanRes = await fetch(`${API_BASE_URL}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pdf_id: currentPdfId,
+          user_input: queryTokens.join(','),
+          schedule_data: backendScheduleData
+        })
+      });
+      
+      if (!scanRes.ok) throw new Error('Failed to start scan');
+      if (!scanRes.body) throw new Error('ReadableStream not supported');
+      
+      const reader = scanRes.body.getReader();
+      const decoder = new TextDecoder();
+      let doneReading = false;
+
+      while (!doneReading) {
+        const { value, done } = await reader.read();
+        doneReading = done;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n\n');
+          for (const line of lines) {
+            if (line.trim().startsWith('data: ')) {
+               try {
+                 const data = JSON.parse(line.trim().slice(6));
+                 if (data.type === 'log') {
+                   setScanResults(prev => prev + data.data + '\n');
+                 } else if (data.type === 'done') {
+                   setScanResultsData(data.results);
+                   if (data.order) setScanResultsOrder(data.order);
+                   setScanResults(prev => prev + `\n✓ Scan complete!\n\nFormatted targets:\n${data.formatted}`);
+                 } else if (data.type === 'error') {
+                   setScanResults(prev => prev + `\n❌ Scan error: ${data.error}`);
+                 }
+               } catch(ex) {
+                 // partial chunk parsing error
+               }
+            }
+          }
+        }
+      }
+      
+    } catch (err: any) {
+      console.error(err);
+      setScanResults(prev => prev + `\n❌ Scan error: ${err.message}`);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleCopy = () => {
@@ -142,12 +282,95 @@ export default function App() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!pdfId || !scanResultsData) {
+      toast.error('No scan results available to print');
+      return;
+    }
+    
+    setIsExporting(true);
+    toast.success('Preparing PDF for printing...', { id: 'print-toast' });
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/export_pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pdf_id: pdfId,
+          scan_results: scanResultsData,
+          order: scanResultsOrder
+        })
+      });
+      
+      if (!res.ok) throw new Error('Failed to generate PDF for printing');
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        toast.success('PDF opened for printing!', { id: 'print-toast' });
+      } else {
+        toast.error('Popup blocked! Please allow popups to open the PDF.', { id: 'print-toast' });
+      }
+      
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error printing PDF', {
+        description: err.message,
+        id: 'print-toast'
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const handleSavePDF = () => {
-    console.log('Saving as PDF...');
+  const handleSavePDF = async () => {
+    if (!pdfId || !scanResultsData) {
+      toast.error('No scan results available to save');
+      return;
+    }
+    
+    setIsExporting(true);
+    toast.success('Generating PDF... please wait');
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/export_pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pdf_id: pdfId,
+          scan_results: scanResultsData,
+          order: scanResultsOrder
+        })
+      });
+      
+      if (!res.ok) throw new Error('Failed to generate PDF');
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = `hymns_extracted.pdf`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) filename = match[1];
+      }
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF saved successfully');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Export failed: ${err.message}`);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -176,7 +399,7 @@ export default function App() {
                 Hymn PDF
               </CardTitle>
               <CardDescription className="text-sm" style={{ color: colors.SUBTEXT }}>
-                Upload your hymn book PDF file
+                Upload your hymn book PDF file {pdfFilename && <span className="text-accent">(Previous: {pdfFilename})</span>}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -420,18 +643,18 @@ export default function App() {
                 placeholder="e.g. 52, CH14, 1A"
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
-                className="border h-11 text-base"
+                className="border h-11 text-base placeholder:text-[#a88c3a]/50 focus-visible:ring-1 focus-visible:ring-[#d4af37]"
                 style={{ 
                   backgroundColor: colors.BG, 
-                  borderColor: colors.SECONDARY,
-                  color: colors.TEXT 
+                  borderColor: colors.ACCENT,
+                  color: colors.TEXT,
                 }}
               />
             </div>
 
             <Button 
               onClick={handleScanPages}
-              disabled={!pdfFile || isScanning}
+              disabled={(!pdfFile && !pdfId) || isScanning}
               className="w-full text-base sm:text-lg py-6 sm:py-7 text-white border-0 min-h-[44px]"
               style={{ backgroundColor: colors.ACCENT }}
             >
@@ -452,7 +675,12 @@ export default function App() {
           <Card className="border" style={{ backgroundColor: colors.SURFACE, borderColor: colors.SECONDARY }}>
             <CardHeader className="pb-3 sm:pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="text-lg sm:text-xl" style={{ color: colors.TEXT }}>Scan Results</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-lg sm:text-xl" style={{ color: colors.TEXT }}>Scan Results</CardTitle>
+                  {isScanning && <span className="px-2 py-0.5 rounded text-xs font-bold animate-pulse border" style={{ backgroundColor: colors.SECONDARY, color: colors.TEXT, borderColor: colors.ACCENT }}>Scanning</span>}
+                  {!isScanning && scanResults.includes('❌') && <span className="px-2 py-0.5 rounded text-xs font-bold border" style={{ backgroundColor: '#2a1111', color: '#ef4444', borderColor: '#7f1d1d' }}>Error</span>}
+                  {!isScanning && scanResultsData && !scanResults.includes('❌') && <span className="px-2 py-0.5 rounded text-xs font-bold border" style={{ backgroundColor: '#162b16', color: colors.SUCCESS, borderColor: '#2f5a2f' }}>Complete</span>}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <Button 
                     onClick={handleCopy} 
@@ -484,6 +712,7 @@ export default function App() {
                   </Button>
                   <Button 
                     onClick={handleSavePDF} 
+                    disabled={(!pdfId || !scanResultsData || isExporting)}
                     variant="outline" 
                     size="sm"
                     className="border flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
@@ -500,7 +729,7 @@ export default function App() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-lg p-4 sm:p-6 font-mono text-xs sm:text-sm overflow-x-auto" style={{ backgroundColor: colors.BG }}>
+              <div className="rounded-lg p-4 sm:p-6 font-mono text-xs sm:text-sm h-64 overflow-auto" style={{ backgroundColor: colors.BG }}>
                 <pre className="whitespace-pre-wrap" style={{ color: colors.SUCCESS }}>{scanResults}</pre>
               </div>
             </CardContent>
@@ -509,5 +738,14 @@ export default function App() {
       </div>
       <Toaster />
     </div>
+  );
+}
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
   );
 }
