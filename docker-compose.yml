@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ${DOCKERHUB_USERNAME:-local}/hymn-scanner-backend:latest
+    image: ${DOCKER_USERNAME:-local}/hymn-scanner-backend:latest
     build: .
     ports:
       - "8654:8654"
@@ -11,7 +11,7 @@ services:
       - ./appdata_index:/root/HymnScanner/
 
   frontend:
-    image: ${DOCKERHUB_USERNAME:-local}/hymn-scanner-frontend:latest
+    image: ${DOCKER_USERNAME:-local}/hymn-scanner-frontend:latest
     build: ./frontend
     ports:
       - "4789:4789"

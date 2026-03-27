@@ -45,6 +45,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Pull and Restart Docker Containers
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           docker compose pull
           docker compose up -d
