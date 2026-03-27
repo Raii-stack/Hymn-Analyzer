@@ -12,9 +12,12 @@ from ctypes import windll
 # Import the refactored scanner logic
 from scanner import run_scan, format_results, parse_schedule_image, extract_hymn_pages
 
-# ─────────────────────────── Colour Palette ───────────────────────────
-SESSION_FILE = "last_session.json"
+APP_DIR = os.path.join(os.getenv('APPDATA', os.path.expanduser('~')), 'HymnScanner')
+os.makedirs(APP_DIR, exist_ok=True)
+SESSION_FILE = os.path.join(APP_DIR, "last_session.json")
+INDEX_FILE = os.path.join(APP_DIR, "pdf_index.json")
 
+# ─────────────────────────── Colour Palette ───────────────────────────
 BG       = "#080603"
 SURFACE  = "#120e06"
 ACCENT   = "#bc9106"
@@ -449,6 +452,7 @@ class HymnScannerApp(tk.Tk):
                 pdf_path=pdf,
                 schedule_file="",          # unused — we pass schedule_data
                 user_input=user_in,
+                index_file=INDEX_FILE,
                 log_callback=self._smart_log,
                 schedule_data=self.schedule_data
             )
