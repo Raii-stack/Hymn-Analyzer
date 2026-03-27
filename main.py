@@ -167,3 +167,26 @@ async def export_pdf(req: ExportRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+SESSION_FILE = Path("appdata_index/session.json")
+
+@app.get("/api/session")
+async def get_session():
+    if SESSION_FILE.exists():
+        try:
+            with open(SESSION_FILE, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            return {}
+    return {}
+
+@app.post("/api/session")
+async def save_session(request: Request):
+    try:
+        data = await request.json()
+        SESSION_FILE.parent.mkdir(exist_ok=True, parents=True)
+        with open(SESSION_FILE, "w") as f:
+            json.dump(data, f)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -9,9 +9,18 @@ services:
     volumes:
       - ./.env:/root/HymnScanner/.env
       - ./appdata_index:/root/HymnScanner/
+    networks:
+      - npm_net
 
   frontend:
     image: ${DOCKER_USERNAME:-local}/hymn-scanner-frontend:latest
     build: ./frontend
     ports:
       - "4789:80"
+    networks:
+      - npm_net
+
+networks:
+  npm_net:
+    external: true
+    name: crms_stack_crms-net
