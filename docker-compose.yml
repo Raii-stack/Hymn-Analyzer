@@ -14,4 +14,4 @@ services:
     image: ${DOCKER_USERNAME:-local}/hymn-scanner-frontend:latest
     build: ./frontend
     ports:
-      - "4789:4789"
+      - "4789:80"
