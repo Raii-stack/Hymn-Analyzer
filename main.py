@@ -52,7 +52,12 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @app.post("/api/parse_lineup")
 async def parse_lineup(file: UploadFile = File(...)):
-    temp_img = TEMP_DIR / f"lineup_{uuid.uuid4()}.img"
+    import os
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+        ext = ".jpg"  # Default to jpg for Gemini compatibility
+        
+    temp_img = TEMP_DIR / f"lineup_{uuid.uuid4()}{ext}"
     with open(temp_img, "wb") as f:
         f.write(await file.read())
     
