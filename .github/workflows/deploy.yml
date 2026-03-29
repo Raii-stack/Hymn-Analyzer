@@ -41,6 +41,9 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      - name: Fix workspace perms
+        run: sudo chown -R $USER:$USER ${{ github.workspace }} || true
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -51,6 +54,4 @@ jobs:
           docker compose pull
           docker compose up -d
       
-      - name: Fix workspace perms
-        if: always()
-        run: sudo chown -R $USER:$USER ${{ github.workspace }}
+      
