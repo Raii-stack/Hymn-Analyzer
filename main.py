@@ -100,7 +100,8 @@ async def scan_pdf(req: ScanRequest):
         return {
             "results": results,
             "formatted": page_list,
-            "logs": logs
+            "logs": logs,
+            "order": list(results.keys())
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

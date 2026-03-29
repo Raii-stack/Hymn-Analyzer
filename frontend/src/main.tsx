@@ -277,10 +277,12 @@ export default function App() {
 
       // Update data state
       setScanResultsData(backendResponse.results);
-      if (backendResponse.results) {
+      if (backendResponse.order) {
+        setScanResultsOrder(backendResponse.order);
+      } else if (backendResponse.results) {
         setScanResultsOrder(Object.keys(backendResponse.results));
       }
-
+      
       // Update logs display
       const logLines = (backendResponse.logs || []).join("\n");
       setScanResults(
