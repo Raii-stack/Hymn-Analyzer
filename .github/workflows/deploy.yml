@@ -50,3 +50,7 @@ jobs:
         run: |
           docker compose pull
           docker compose up -d
+      
+      - name: Fix workspace perms
+        if: always()
+        run: sudo chown -R $USER:$USER ${{ github.workspace }}
