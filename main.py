@@ -40,6 +40,7 @@ class ScanRequest(BaseModel):
 class ExportRequest(BaseModel):
     pdf_id: str
     scan_results: Dict[str, Any]
+    order: Optional[List[str]] = None
 
 @app.post("/api/upload_pdf")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -114,7 +115,10 @@ async def export_pdf(req: ExportRequest):
     out_path = TEMP_DIR / f"hymns_{out_id}.pdf"
     
     try:
-        extract_hymn_pages(pdf_path, req.scan_results, str(out_path))
+        # Reconstruct exactly in the order given by the user
+        ordered_results = {k: req.scan_results[k] for k in req.order if k in req.scan_results} if req.order else req.scan_results
+        
+        extract_hymn_pages(pdf_path, ordered_results, str(out_path))
         return FileResponse(
             path=out_path, 
             filename=f"hymns_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
