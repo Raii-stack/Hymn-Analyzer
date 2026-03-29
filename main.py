@@ -22,6 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Use the mapped volume path primarily, fallback to local appdata_index for desktop dev
+DATA_DIR = Path("/root/HymnScanner") if Path("/root/HymnScanner").exists() else Path("appdata_index")
+DATA_DIR.mkdir(exist_ok=True, parents=True)
+
 TEMP_DIR = Path(tempfile.gettempdir()) / "hymn_scanner_dev"
 TEMP_DIR.mkdir(exist_ok=True, parents=True)
 
@@ -81,7 +85,7 @@ async def scan_pdf(req: ScanRequest):
             pdf_path=pdf_path,
             schedule_file="",
             user_input=req.user_input,
-            index_file=str(TEMP_DIR / "pdf_index.json"),
+            index_file=str(DATA_DIR / "pdf_index.json"),
             log_callback=log_callback,
             schedule_data=req.schedule_data
         )
