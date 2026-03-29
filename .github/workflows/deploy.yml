@@ -44,6 +44,9 @@ jobs:
       - name: Fix workspace perms
         run: sudo chown -R $USER:$USER ${{ github.workspace }} || true
 
+      - name: Set up ENV variables
+        run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
