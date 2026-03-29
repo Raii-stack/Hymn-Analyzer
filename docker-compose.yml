@@ -6,8 +6,9 @@ services:
     build: .
     ports:
       - "8654:8654"
+    env_file:
+      - .env
     volumes:
-      - ./.env:/root/HymnScanner/.env
       - ./appdata_index:/root/HymnScanner/
     networks:
       - npm_net
