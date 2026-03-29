@@ -245,45 +245,33 @@ export default function App() {
         }),
       });
 
-      if (!scanRes.ok) throw new Error("Failed to start scan");
-      if (!scanRes.body) throw new Error("ReadableStream not supported");
-
-      const reader = scanRes.body.getReader();
-      const decoder = new TextDecoder();
-      let doneReading = false;
-
-      while (!doneReading) {
-        const { value, done } = await reader.read();
-        doneReading = done;
-        if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n\n");
-          for (const line of lines) {
-            if (line.trim().startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.trim().slice(6));
-                if (data.type === "log") {
-                  setScanResults((prev) => prev + data.data + "\n");
-                } else if (data.type === "done") {
-                  setScanResultsData(data.results);
-                  if (data.order) setScanResultsOrder(data.order);
-                  setScanResults(
-                    (prev) =>
-                      prev +
-                      `\n✓ Scan complete!\n\nFormatted targets:\n${data.formatted}`,
-                  );
-                } else if (data.type === "error") {
-                  setScanResults(
-                    (prev) => prev + `\n❌ Scan error: ${data.error}`,
-                  );
-                }
-              } catch (ex) {
-                // partial chunk parsing error
-              }
-            }
-          }
-        }
+      if (scanRes.status === 404) {
+        throw new Error(
+          "PDF not found on server. Please re-select the Hymn PDF and try again.",
+        );
       }
+
+      if (!scanRes.ok) {
+        const errorData = await scanRes.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to start scan");
+      }
+
+      const backendResponse = await scanRes.json();
+
+      // Update data state
+      setScanResultsData(backendResponse.results);
+      if (backendResponse.results) {
+        setScanResultsOrder(Object.keys(backendResponse.results));
+      }
+
+      // Update logs display
+      const logLines = (backendResponse.logs || []).join("\n");
+      setScanResults(
+        (prev) =>
+          prev +
+          logLines +
+          `\n\n✓ Scan complete!\n\nFormatted targets:\n${backendResponse.formatted}`,
+      );
     } catch (err: any) {
       console.error(err);
       setScanResults((prev) => prev + `\n❌ Scan error: ${err.message}`);
