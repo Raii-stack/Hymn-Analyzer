@@ -70,7 +70,7 @@ export default function App() {
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
       ? "http://127.0.0.1:8000"
-      : `${window.location.protocol}//${window.location.hostname}:8654`;
+      : ""; // Use relative path in production so it shares the same domain/port
 
   useEffect(() => {
     const saved = localStorage.getItem("hymn_scanner_session");
