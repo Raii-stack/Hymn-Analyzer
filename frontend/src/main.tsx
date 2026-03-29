@@ -112,14 +112,13 @@ export default function App() {
       scanResultsData,
       scanResultsOrder,
     };
-    
-    // Save to the global backend 
+
+    // Save to the global backend
     fetch(`${API_BASE_URL}/api/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sessionData)
-    }).catch(e => console.error("Failed to save global session", e));
-    
+      body: JSON.stringify(sessionData),
+    }).catch((e) => console.error("Failed to save global session", e));
   }, [
     sessionLoaded,
     pdfId,
