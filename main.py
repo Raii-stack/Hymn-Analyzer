@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -117,3 +117,26 @@ async def export_pdf(req: ExportRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+SESSION_FILE = DATA_DIR / "session.json"
+
+@app.get("/api/session")
+async def get_session():
+    if SESSION_FILE.exists():
+        try:
+            with open(SESSION_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+@app.post("/api/session")
+async def save_session(request: Request):
+    try:
+        data = await request.json()
+        with open(SESSION_FILE, "w") as f:
+            json.dump(data, f)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

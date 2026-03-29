@@ -72,26 +72,36 @@ export default function App() {
       ? "http://127.0.0.1:8000"
       : ""; // Use relative path in production so it shares the same domain/port
 
+  // Flag to prevent saving over the backend session immediately on mount
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+
   useEffect(() => {
-    const saved = localStorage.getItem("hymn_scanner_session");
-    if (saved) {
+    const fetchSession = async () => {
       try {
-        const data = JSON.parse(saved);
-        if (data.pdfId) setPdfId(data.pdfId);
-        if (data.pdfFilename) setPdfFilename(data.pdfFilename);
-        if (data.scheduleData) setScheduleData(data.scheduleData);
-        if (data.selectedDates) setSelectedDates(data.selectedDates);
-        if (data.manualInput) setManualInput(data.manualInput);
-        if (data.scanResults) setScanResults(data.scanResults);
-        if (data.scanResultsData) setScanResultsData(data.scanResultsData);
-        if (data.scanResultsOrder) setScanResultsOrder(data.scanResultsOrder);
+        const res = await fetch(`${API_BASE_URL}/api/session`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pdfId) setPdfId(data.pdfId);
+          if (data.pdfFilename) setPdfFilename(data.pdfFilename);
+          if (data.scheduleData) setScheduleData(data.scheduleData);
+          if (data.selectedDates) setSelectedDates(data.selectedDates);
+          if (data.manualInput) setManualInput(data.manualInput);
+          if (data.scanResults) setScanResults(data.scanResults);
+          if (data.scanResultsData) setScanResultsData(data.scanResultsData);
+          if (data.scanResultsOrder) setScanResultsOrder(data.scanResultsOrder);
+        }
       } catch (e) {
-        console.error("Failed to parse session", e);
+        console.error("Failed to load global session", e);
+      } finally {
+        setSessionLoaded(true);
       }
-    }
+    };
+    fetchSession();
   }, []);
 
   useEffect(() => {
+    if (!sessionLoaded) return; // Don't wipe the backend if we haven't loaded it yet
+
     const sessionData = {
       pdfId,
       pdfFilename,
@@ -102,8 +112,16 @@ export default function App() {
       scanResultsData,
       scanResultsOrder,
     };
-    localStorage.setItem("hymn_scanner_session", JSON.stringify(sessionData));
+    
+    // Save to the global backend 
+    fetch(`${API_BASE_URL}/api/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sessionData)
+    }).catch(e => console.error("Failed to save global session", e));
+    
   }, [
+    sessionLoaded,
     pdfId,
     pdfFilename,
     scheduleData,
